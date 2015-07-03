@@ -58,7 +58,7 @@ function _ansible_fetch_repo() {
     _ansible_echo "Cloning ansible from repo ${ANSIBLE_REPO_URI} to ${ANSIBLE_CHECKOUT_PATH}";
     git clone "${ANSIBLE_QUIET}" --recursive "${ANSIBLE_REPO_URI}" "${ANSIBLE_CHECKOUT_PATH}";
   fi
-  _ansible_echo "Checking out branch ${ANSIBLE_BRANCH}";
+  _ansible_echo "Checking out branch ${ANSIBLE_BRANCH} in ${ANSIBLE_CHECKOUT_PATH}";
   ( cd ${ANSIBLE_CHECKOUT_PATH}; \
     git checkout "${ANSIBLE_QUIET}" "${ANSIBLE_BRANCH}"; \
     git pull "${ANSIBLE_QUIET}" --recurse-submodules; \
