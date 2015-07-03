@@ -57,10 +57,14 @@ function _ansible_get_virtualenv() {
 
 function _ansible_init_virtualenv() {
   local ANSIBLE_VENV_DIR="${1}";
-
+  if [ -z "${ANSIBLE_VENV_DIR}" ]; then
+    _ansible_echo 'Variable ${ANSIBLE_VENV_DIR} was empty';
+    return 0;
+  fi
   _ansible_echo "Creating virtualenv ${ANSIBLE_VENV_DIR}";
   virtualenv "${ANSIBLE_VENV_DIR}";
   . "${ANSIBLE_VENV_DIR}/bin/activate";
+  return 1;
 }
 
 function _ansible_init_dependencies() {
@@ -120,7 +124,7 @@ function ansible_init_virtualenv() {
       shift
       ;;
       -r|--repo)
-        ANSIBLE_REPO_URI="${2}";
+          ANSIBLE_REPO_URI="${2}";
       shift
       ;;
       -b|--branch)
@@ -150,6 +154,10 @@ function ansible_init_virtualenv() {
       ;;
       --pip)
         _ansible_echo "The --pip option currently does nothing. I'm working on it";
+        if [ -z "${2}" ]; then
+          _ansible_echo 'You specified --pip but it was empty';
+          return 1;
+        fi
         ANSIBLE_PIP="${2}";
       shift
       ;;
