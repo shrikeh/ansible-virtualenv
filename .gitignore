@@ -1,2 +1,5 @@
-venv
-ansible
+*
+!.gi*
+!init.sh
+!LICENSE
+!README.md
