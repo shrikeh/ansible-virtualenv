@@ -33,27 +33,38 @@ _ansible_check_pip() {
 }
 
 _ansible_update_pip() {
-  local PIP_BINARY="$1";
+  local PIP_BINARY="${1}";
+  local USE_SUDO="${2}";
   local PIP_QUIET='--quiet';
-  if [ "$2" = true ]; then
+  if [ "${3}" = true ]; then
     PIP_QUIET='';
+  fi
+  echo "${@}";
+  if [ "${USE_SUDO}" = true ]; then
+    PIP_BINARY="sudo ${PIP_BINARY}";
   fi
   # Make sure we have virtualenv
   _ansible_echo 'Updating pip';
-  pip install --upgrade ${PIP_QUIET} pip || return 1;
+  eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} pip" || return 1;
 }
 
 # Make sure we have the latest version of Virtualenv
 _ansible_get_virtualenv() {
   local PIP_BINARY="${1}";
+  local USE_SUDO="${2}";
+
   local PIP_QUIET='--quiet';
-  if [ "${2}" = true ]; then
+  if [ "${3}" = true ]; then
     PIP_QUIET='';
   fi
 
+  if [ "${USE_SUDO}" = true ]; then
+    PIP_BINARY="sudo ${PIP_BINARY}";
+    echo here;
+  fi
   if ! _ansible_command_exists 'virtualenv'; then
     _ansible_echo 'Installing virtualenv';
-    pip install ${PIP_QUIET} --upgrade virtualenv virtualenvwrapper || return 1;
+    eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} virtualenv virtualenvwrapper" || return 1;
   fi
   return 0;
 }
@@ -121,10 +132,13 @@ ansible_init_virtualenv() {
   local ANSIBLE_VENV_DIR='venv';
   local ANSIBLE_VERBOSE=true;
   local ANSIBLE_PIP='pip';
+  local ANISBLE_PIP_SUDO=false;
   local ANSIBLE_USE_PIP_VERSION=false;
   local UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
   local ANSIBLE_BREW_UP=false;
+
+  _ansible_echo 'Beginning installation of ansible in a virtualenv...';
 
   while [[ "${#}" > 0 ]]; do
     local key="${1}";
@@ -155,6 +169,10 @@ ansible_init_virtualenv() {
       --use-pip-version)
         ANSIBLE_USE_PIP_VERSION=true;
       ;;
+      --sudo)
+        ANSIBLE_PIP_SUDO=true;
+        _ansible_echo "Pip will run with sudo. This is a fantastically bad idea, IMHO. But, OK...";
+      ;;
       --temp)
         ANSIBLE_TEMP_DIR=$(`mktemp -d 2>/dev/null || mktemp -d -t $TMP_DIR`);
       ;;
@@ -172,15 +190,11 @@ ansible_init_virtualenv() {
       shift
       ;;
       *)
-              # unknown option
+      # unknown option
       ;;
   esac
     shift
   done
-
-  if ! _ansible_command_exists 'source'; then
-    alias 'source' '.';
-  fi
 
 
   if [ "${ANSIBLE_DEBUG}" = true ]; then
@@ -194,16 +208,17 @@ ansible_init_virtualenv() {
   fi
 
   if ! _ansible_check_pip "${ANSIBLE_PIP}" "${ANSIBLE_BREW_UP}"; then
+    _ansible_echo 'Failed to find pip, exiting';
     return 1;
   fi
 
   if [[ -z "${VIRTUAL_ENV}" ]]; then
-
-    if ! _ansible_update_pip "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_update_pip "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to update pip';
       return 1;
     fi
-    if ! _ansible_get_virtualenv "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}"; then
+
+    if ! _ansible_get_virtualenv "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to install virtualenv';
       return 1;
     fi;

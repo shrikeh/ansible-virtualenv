@@ -4,6 +4,7 @@ Set up the latest version of Ansible to run from a virtualenv on your local syst
 
 ## Basic usage
 ```bash
+mkdir -p ./ansible-test;
 source <(curl -L --silent 'https://raw.githubusercontent.com/shrikeh/ansible-virtualenv/master/init.sh')
 ```
 This will:
@@ -28,3 +29,7 @@ source <(curl -L --silent 'https://raw.githubusercontent.com/shrikeh/ansible-vir
 
 ```
 See below for a full list of supported options.
+
+## Flags
+
+`--d|--dir` Specify the directory that ansible will install into. Defaults to `./ansible` in the current directory.
