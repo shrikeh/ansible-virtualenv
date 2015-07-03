@@ -39,7 +39,6 @@ _ansible_update_pip() {
   if [ "${3}" = true ]; then
     PIP_QUIET='';
   fi
-  echo "${@}";
   if [ "${USE_SUDO}" = true ]; then
     PIP_BINARY="sudo ${PIP_BINARY}";
   fi
@@ -60,11 +59,10 @@ _ansible_get_virtualenv() {
 
   if [ "${USE_SUDO}" = true ]; then
     PIP_BINARY="sudo ${PIP_BINARY}";
-    echo here;
   fi
   if ! _ansible_command_exists 'virtualenv'; then
     _ansible_echo 'Installing virtualenv';
-    eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} virtualenv virtualenvwrapper" || return 1;
+    eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} virtualenv" || return 1;
   fi
   return 0;
 }
