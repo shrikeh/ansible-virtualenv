@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Used merely to make the steps in the script easier to read.
-function _ansible_echo() {
+_ansible_echo() {
   echo -e "\033[1m\n${1}\n\033[0m";
   tput sgr0;
+  return 0;
 }
 
-function _ansible_command_exists() {
+_ansible_command_exists() {
   local COMMAND=${1};
   command -v "${COMMAND}" >/dev/null 2>&1  || return 1;
 }
 
-function _ansible_check_pip() {
+_ansible_check_pip() {
   local ANSIBLE_PIP="${1}";
   local ANSIBLE_BREW_UP="${2}";
 
@@ -20,7 +21,7 @@ function _ansible_check_pip() {
     _ansible_echo 'Pip is required and it was not found';
     if [ "$ANSIBLE_BREW_UP" = true ]; then
       _ansible_echo 'You specified --brew so I will attempt to install Python via homebrew';
-      if ! _ansible_command_exists brew; then
+      if ! _ansible_command_exists 'brew'; then
         _ansible_echo 'Brew not found :( Sorry, I can do nothing for you';
         return 1;
       fi
@@ -28,10 +29,10 @@ function _ansible_check_pip() {
       return 0;
     fi
   fi
-  return 1
+  return 1;
 }
 
-function _ansible_update_pip() {
+_ansible_update_pip() {
   local PIP_BINARY="$1";
   local PIP_QUIET='--quiet';
   if [ "$2" = true ]; then
@@ -39,44 +40,52 @@ function _ansible_update_pip() {
   fi
   # Make sure we have virtualenv
   _ansible_echo 'Updating pip';
-  pip install --upgrade ${PIP_QUIET} pip;
+  pip install --upgrade ${PIP_QUIET} pip || return 1;
 }
 
 # Make sure we have the latest version of Virtualenv
-function _ansible_get_virtualenv() {
+_ansible_get_virtualenv() {
   local PIP_BINARY="${1}";
   local PIP_QUIET='--quiet';
   if [ "${2}" = true ]; then
     PIP_QUIET='';
   fi
+
   if ! _ansible_command_exists 'virtualenv'; then
     _ansible_echo 'Installing virtualenv';
-    pip install ${PIP_QUIET} --upgrade virtualenv virtualenvwrapper;
+    pip install ${PIP_QUIET} --upgrade virtualenv virtualenvwrapper || return 1;
   fi
+  return 0;
 }
 
-function _ansible_init_virtualenv() {
+_ansible_init_virtualenv() {
   local ANSIBLE_VENV_DIR="${1}";
   if [ -z "${ANSIBLE_VENV_DIR}" ]; then
     _ansible_echo 'Variable ${ANSIBLE_VENV_DIR} was empty';
-    return 0;
+    return 1;
   fi
   _ansible_echo "Creating virtualenv ${ANSIBLE_VENV_DIR}";
-  virtualenv "${ANSIBLE_VENV_DIR}";
+  mkdir -p "${ANSIBLE_VENV_DIR}";
+  if [ ! -w "${ANSIBLE_VENV_DIR}" ]; then
+      _ansible_echo "Directory ${ANSIBLE_VENV_DIR} does not exist or is not writable";
+      return 1;
+  fi
+  virtualenv "${ANSIBLE_VENV_DIR}" || return 1;
   . "${ANSIBLE_VENV_DIR}/bin/activate";
-  return 1;
+  return 0;
 }
 
-function _ansible_init_dependencies() {
+_ansible_init_dependencies() {
   local PIP_QUIET='--quiet';
   if [ "${1}" = true ]; then
     PIP_QUIET='';
   fi
   _ansible_echo "Installing dependencies via pip";
-  pip install $PIP_QUIET --upgrade pip paramiko PyYAML Jinja2 httplib2 six;
+  pip install $PIP_QUIET --upgrade pip paramiko PyYAML Jinja2 httplib2 six || return 1;
+  return 0;
 }
 
-function _ansible_fetch_repo() {
+_ansible_fetch_repo() {
   local ANSIBLE_QUIET='--quiet';
   local ANSIBLE_CHECKOUT_PATH="${2}";
   local ANSIBLE_REPO_URI="${3}";
@@ -96,15 +105,16 @@ function _ansible_fetch_repo() {
     git checkout ${ANSIBLE_QUIET} "${ANSIBLE_BRANCH}"; \
     git pull ${ANSIBLE_QUIET} --recurse-submodules; \
   );
+  return 0;
 }
 
-function _ansible_hack() {
+_ansible_hack() {
   local ANSIBLE_DIR=${1};
 
   source "${ANSIBLE_DIR}/hacking/env-setup";
 }
 
-function ansible_init_virtualenv() {
+ansible_init_virtualenv() {
   local ANSIBLE_DIR='./ansible';
   local ANSIBLE_REPO_URI='https://github.com/ansible/ansible.git';
   local ANSIBLE_BRANCH='devel';
@@ -188,11 +198,22 @@ function ansible_init_virtualenv() {
   fi
 
   if [[ -z "${VIRTUAL_ENV}" ]]; then
-    _ansible_update_pip "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}";
-    _ansible_get_virtualenv "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}";
-    _ansible_init_virtualenv "${ANSIBLE_VENV_DIR}";
+
+    if ! _ansible_update_pip "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}"; then
+      _ansible_echo 'Failed to update pip';
+      return 1;
+    fi
+    if ! _ansible_get_virtualenv "${ANSIBLE_PIP}" "${ANSIBLE_VERBOSE}"; then
+      _ansible_echo 'Failed to install virtualenv';
+      return 1;
+    fi;
+
+    if ! _ansible_init_virtualenv "${ANSIBLE_VENV_DIR}"; then
+      _ansible_echo "Failed to initialise virtualenv ${ANSIBLE_VENV_DIR}";
+      return 1;
+    fi
   else
-    _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, assuming to use this";
+    _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, making assumption to use this";
   fi
 
   _ansible_init_dependencies "${ANSIBLE_VERBOSE}";
