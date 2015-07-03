@@ -174,6 +174,7 @@ function ansible_init_virtualenv() {
   fi
 
   _ansible_echo 'Ansible has been installed! Try running `ansible --version` to see if it worked';
+  ansible --version;
   return true;
 }
 
