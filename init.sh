@@ -10,10 +10,31 @@ function _ansible_command_exists() {
   command -v "${COMMAND}" >/dev/null 2>&1  || return 1;
 }
 
+function _ansible_check_pip() {
+  local ANSIBLE_PIP="${1}";
+  local ANSIBLE_BREW_UP="${2}";
+
+  if _ansible_command_exists "${ANSIBLE_PIP}"; then
+    return 0;
+  else
+    _ansible_echo 'Pip is required and it was not found';
+    if [ "$ANSIBLE_BREW_UP" = true ]; then
+      _ansible_echo 'You specified --brew so I will attempt to install Python via homebrew';
+      if ! _ansible_command_exists brew; then
+        _ansible_echo 'Brew not found :( Sorry, I can do nothing for you';
+        return 1;
+      fi
+      brew install --universal python;
+      return 0;
+    fi
+  fi
+  return 1
+}
+
 function _ansible_update_pip() {
-  local PIP_BINARY="${1}";
+  local PIP_BINARY="$1";
   local PIP_QUIET='--quiet';
-  if [ "${2}" = true ]; then
+  if [ "$2" = true ]; then
     PIP_QUIET='';
   fi
   # Make sure we have virtualenv
@@ -39,7 +60,7 @@ function _ansible_init_virtualenv() {
 
   _ansible_echo "Creating virtualenv ${ANSIBLE_VENV_DIR}";
   virtualenv "${ANSIBLE_VENV_DIR}";
-  source "${ANSIBLE_VENV_DIR}/bin/activate";
+  . "${ANSIBLE_VENV_DIR}/bin/activate";
 }
 
 function _ansible_init_dependencies() {
@@ -48,7 +69,7 @@ function _ansible_init_dependencies() {
     PIP_QUIET='';
   fi
   _ansible_echo "Installing dependencies via pip";
-  pip install ${PIP_QUIET} --upgrade pip paramiko PyYAML Jinja2 httplib2 six;
+  pip install $PIP_QUIET --upgrade pip paramiko PyYAML Jinja2 httplib2 six;
 }
 
 function _ansible_fetch_repo() {
@@ -89,6 +110,7 @@ function ansible_init_virtualenv() {
   local ANSIBLE_USE_PIP_VERSION=false;
   local UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
+  local ANSIBLE_BREW_UP=false;
 
   while [[ "${#}" > 0 ]]; do
     local key="${1}";
@@ -104,6 +126,9 @@ function ansible_init_virtualenv() {
       -b|--branch)
         ANSIBLE_BRANCH="${2}";
       shift
+      ;;
+      --brew)
+        ANSIBLE_BREW_UP=true;
       ;;
       --venv)
         ANSIBLE_VENV_DIR="${2}";
@@ -150,9 +175,8 @@ function ansible_init_virtualenv() {
     rm -rf "${ANSIBLE_DIR}" "${ANSIBLE_VENV_DIR}";
   fi
 
-  if ! _ansible_command_exists "${ANSIBLE_PIP}"; then
-    _ansible_echo 'Pip is required and it was not found';
-    return false;
+  if ! _ansible_check_pip "${ANSIBLE_PIP}" "${ANSIBLE_BREW_UP}"; then
+    return 1;
   fi
 
   if [[ -z "${VIRTUAL_ENV}" ]]; then
@@ -165,7 +189,7 @@ function ansible_init_virtualenv() {
 
   _ansible_init_dependencies "${ANSIBLE_VERBOSE}";
 
-  if [ "${ANSIBLE_USE_PIP_VERSION}" = true ]; then
+  if [ "$ANSIBLE_USE_PIP_VERSION" = true ]; then
     _ansible_echo 'Using ansible version from pip';
     pip install --upgrade ansible;
   else
@@ -175,7 +199,7 @@ function ansible_init_virtualenv() {
 
   _ansible_echo 'Ansible has been installed! Try running `ansible --version` to see if it worked';
   ansible --version;
-  return true;
+  return 0;
 }
 
 ansible_init_virtualenv "${@}";
