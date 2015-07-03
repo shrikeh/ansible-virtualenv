@@ -135,6 +135,11 @@ function ansible_init_virtualenv() {
     shift
   done
 
+  if ! _ansible_command_exists 'source'; then
+    alias 'source' '.';
+  fi
+
+
   if [ "${ANSIBLE_DEBUG}" = true ]; then
     ANSIBLE_VERBOSE=true;
     if _ansible_command_exists 'deactivate'; then
