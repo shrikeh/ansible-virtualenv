@@ -37,7 +37,7 @@ function _ansible_init_virtualenv() {
 }
 
 function _init_dependencies() {
-  
+  _ansible_echo "Installing deps "
 }
 
 function _ansible_fetch_repo() {
@@ -62,6 +62,8 @@ function _ansible_hack() {
 }
 
 function ansible_init_virtualenv() {
+  echo ${1};
+  echo ${#};
   local ANSIBLE_DIR='./ansible';
 
   _ansible_update_pip;
