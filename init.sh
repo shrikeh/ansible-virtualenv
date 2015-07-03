@@ -107,15 +107,20 @@ function ansible_init_virtualenv() {
       shift
       ;;
       *)
-      # unknown option
+              # unknown option
       ;;
   esac
     shift
   done
-  _ansible_update_pip "${ANSIBLE_VERBOSE}";
-  _ansible_get_virtualenv "${ANSIBLE_VERBOSE}";
+
+  if [[ -z "${VIRTUAL_ENV}" ]]; then
+    _ansible_update_pip "${ANSIBLE_VERBOSE}";
+    _ansible_get_virtualenv "${ANSIBLE_VERBOSE}";
+    _ansible_init_virtualenv "${ANSIBLE_VENV_DIR}";
+  else
+    _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, assuming to use this";
+  fi
   _ansible_fetch_repo "${ANSIBLE_VERBOSE}" "${ANSIBLE_DIR}" "${ANSIBLE_REPO_URI}" "${ANSIBLE_BRANCH}";
-  _ansible_init_virtualenv "${ANSIBLE_VENV_DIR}";
   _ansible_hack "${ANSIBLE_DIR}";
 }
 
