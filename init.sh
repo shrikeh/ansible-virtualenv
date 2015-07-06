@@ -62,7 +62,7 @@ _ansible_get_virtualenv() {
   fi
   if ! _ansible_command_exists 'virtualenv'; then
     _ansible_echo 'Installing virtualenv';
-    eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} virtualenv" || return 1;
+    eval "${PIP_BINARY} install --user --upgrade ${PIP_QUIET} virtualenv" || return 1;
   fi
   return 0;
 }
@@ -85,12 +85,21 @@ _ansible_init_virtualenv() {
 }
 
 _ansible_init_dependencies() {
+  local ANSIBLE_DIR="${1}";
   local PIP_QUIET='--quiet';
-  if [ "${1}" = true ]; then
+  local REQUIREMENTS_FILE='./lib/ansible.egg-info/requires.txt';
+  if [ "${2}" = true ]; then
     PIP_QUIET='';
   fi
-  _ansible_echo "Installing dependencies via pip";
-  pip install $PIP_QUIET --upgrade pip paramiko PyYAML Jinja2 httplib2 six || return 1;
+
+  local PIP_REQUIREMENTS="${ANSIBLE_DIR}/${REQUIREMENTS_FILE}";
+  _ansible_echo "Attempting to install dependencies from ${PIP_REQUIREMENTS}";
+  if [ ! -e "${PIP_REQUIREMENTS}" ]; then
+    _ansible_echo "File ${PIP_REQUIREMENTS} was not found or not readable";
+    return 1;
+  else
+    pip install $PIP_QUIET --upgrade -r "${ANSIBLE_DIR}/${REQUIREMENTS_FILE}" || return 1;
+  fi
   return 0;
 }
 
@@ -229,7 +238,7 @@ ansible_init_virtualenv() {
     _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, making assumption to use this";
   fi
 
-  _ansible_init_dependencies "${ANSIBLE_VERBOSE}";
+
 
   if [ "$ANSIBLE_USE_PIP_VERSION" = true ]; then
     _ansible_echo 'Using ansible version from pip';
@@ -237,6 +246,7 @@ ansible_init_virtualenv() {
   else
     _ansible_fetch_repo "${ANSIBLE_VERBOSE}" "${ANSIBLE_DIR}" "${ANSIBLE_REPO_URI}" "${ANSIBLE_BRANCH}";
     _ansible_hack "${ANSIBLE_DIR}";
+    _ansible_init_dependencies "${ANSIBLE_DIR}" "${ANSIBLE_VERBOSE}";
   fi
 
   _ansible_echo 'Ansible has been installed! Try running `ansible --version` to see if it worked';
