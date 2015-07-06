@@ -16,6 +16,12 @@ This will:
 
 Tested with bash and zsh. Pull requests welcome.
 
+## Workaround for Mac users on bash < 4
+
+Apple have an ancient version of bash as default on Macbooks (3.5, IIRC). Ideally, if you have homebrew (and you should), then I would recommend installing the superior version of bash from there.
+
+If this isn't an option, then download the file and source it directly.
+
 ## Advanced usage and options
 
 The bash script takes options, as in the example below:
