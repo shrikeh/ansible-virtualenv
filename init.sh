@@ -88,6 +88,7 @@ _ansible_init_dependencies() {
   local ANSIBLE_DIR="${1}";
   local PIP_QUIET='--quiet';
   local REQUIREMENTS_FILE='./lib/ansible.egg-info/requires.txt';
+
   if [ "${2}" = true ]; then
     PIP_QUIET='';
   fi
@@ -126,6 +127,16 @@ _ansible_fetch_repo() {
   return 0;
 }
 
+_ansible_do() {
+  local PIP_QUIET='--quiet';
+  if [ "${1}" = true ]; then
+    PIP_QUIET='';
+  fi
+  _ansible_echo 'Installing dopy';
+  pip install $PIP_QUIET --upgrade dopy || return 1;
+  return 0;
+}
+
 _ansible_hack() {
   local ANSIBLE_DIR=${1};
 
@@ -144,6 +155,7 @@ ansible_init_virtualenv() {
   local UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
   local ANSIBLE_BREW_UP=false;
+  local ANSIBLE_DO_SUPPORT=false;
 
   _ansible_echo 'Beginning installation of ansible in a virtualenv...';
 
@@ -161,6 +173,9 @@ ansible_init_virtualenv() {
       -b|--branch)
         ANSIBLE_BRANCH="${2}";
       shift
+      ;;
+      --do)
+        ANSIBLE_DO_SUPPORT=true;
       ;;
       --brew)
         ANSIBLE_BREW_UP=true;
@@ -240,7 +255,7 @@ ansible_init_virtualenv() {
 
 
 
-  if [ "$ANSIBLE_USE_PIP_VERSION" = true ]; then
+  if [ "${ANSIBLE_USE_PIP_VERSION}" = true ]; then
     _ansible_echo 'Using ansible version from pip';
     pip install --upgrade ansible;
   else
@@ -248,8 +263,11 @@ ansible_init_virtualenv() {
     _ansible_hack "${ANSIBLE_DIR}";
     _ansible_init_dependencies "${ANSIBLE_DIR}" "${ANSIBLE_VERBOSE}";
   fi
+  if [ "${ANSIBLE_DO_SUPPORT}" = true ]; then
+    _ansible_do;
+  fi
 
-  _ansible_echo 'Ansible has been installed! Try running `ansible --version` to see if it worked';
+  _ansible_echo 'Ansible has been installed! Running ansible --version:';
   ansible --version;
   return 0;
 }
