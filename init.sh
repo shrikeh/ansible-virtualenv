@@ -99,6 +99,7 @@ _ansible_init_dependencies() {
   #  _ansible_echo "File ${PIP_REQUIREMENTS} was not found or not readable";
   #  return 1;
   #else
+    _ansible_echo 'Installing dependencies';
     pip install $PIP_QUIET --upgrade -r paramiko PyYAML Jinja2 httplib2 six || return 1;
   #fi
   return 0;
@@ -271,7 +272,6 @@ ansible_init_virtualenv() {
   else
     _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, making assumption to use this";
   fi
-
 
 
   if [ "${ANSIBLE_USE_PIP_VERSION}" = true ]; then
