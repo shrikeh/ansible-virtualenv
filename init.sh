@@ -100,7 +100,7 @@ _ansible_init_dependencies() {
   #  return 1;
   #else
     _ansible_echo 'Installing dependencies';
-    pip install $PIP_QUIET --upgrade -r paramiko PyYAML Jinja2 httplib2 six || return 1;
+    pip install $PIP_QUIET --upgrade paramiko PyYAML Jinja2 httplib2 six || return 1;
   #fi
   return 0;
 }
