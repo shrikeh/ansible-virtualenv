@@ -93,14 +93,14 @@ _ansible_init_dependencies() {
     PIP_QUIET='';
   fi
 
-  local PIP_REQUIREMENTS="${ANSIBLE_DIR}/${REQUIREMENTS_FILE}";
-  _ansible_echo "Attempting to install dependencies from ${PIP_REQUIREMENTS}";
-  if [ ! -e "${PIP_REQUIREMENTS}" ]; then
-    _ansible_echo "File ${PIP_REQUIREMENTS} was not found or not readable";
-    return 1;
-  else
-    pip install $PIP_QUIET --upgrade -r "${ANSIBLE_DIR}/${REQUIREMENTS_FILE}" || return 1;
-  fi
+  #local PIP_REQUIREMENTS="${ANSIBLE_DIR}/${REQUIREMENTS_FILE}";
+  #_ansible_echo "Attempting to install dependencies from ${PIP_REQUIREMENTS}";
+  #if [ ! -e "${PIP_REQUIREMENTS}" ]; then
+  #  _ansible_echo "File ${PIP_REQUIREMENTS} was not found or not readable";
+  #  return 1;
+  #else
+    pip install $PIP_QUIET --upgrade -r paramiko PyYAML Jinja2 httplib2 six || return 1;
+  #fi
   return 0;
 }
 
@@ -137,6 +137,16 @@ _ansible_do() {
   return 0;
 }
 
+_ansible_rax() {
+  local PIP_QUIET='--quiet';
+  if [ "${1}" = true ]; then
+    PIP_QUIET='';
+  fi
+  _ansible_echo 'Installing pyrax';
+  pip install $PIP_QUIET --upgrade pyrax || return 1;
+  return 0;
+}
+
 _ansible_hack() {
   local ANSIBLE_DIR=${1};
 
@@ -152,10 +162,12 @@ ansible_init_virtualenv() {
   local ANSIBLE_PIP='pip';
   local ANISBLE_PIP_SUDO=false;
   local ANSIBLE_USE_PIP_VERSION=false;
-  local UPDATE_PIP=false;
+  local ANSIBLE_UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
   local ANSIBLE_BREW_UP=false;
   local ANSIBLE_DO_SUPPORT=false;
+  local ANSIBLE_RAX_SUPPORT=false;
+  local ANSIBLE_URI_SUPPORT=false;
 
   _ansible_echo 'Beginning installation of ansible in a virtualenv...';
 
@@ -176,6 +188,13 @@ ansible_init_virtualenv() {
       ;;
       --do)
         ANSIBLE_DO_SUPPORT=true;
+      ;;
+      --rax)
+        ANSIBLE_RAX_SUPPORT=true;
+      ;;
+      --uri)
+      # Support for uri module, which requires httplib2
+        ANSIBLE_URI_SUPPORT=true;
       ;;
       --brew)
         ANSIBLE_BREW_UP=true;
@@ -263,8 +282,13 @@ ansible_init_virtualenv() {
     _ansible_hack "${ANSIBLE_DIR}";
     _ansible_init_dependencies "${ANSIBLE_DIR}" "${ANSIBLE_VERBOSE}";
   fi
+
   if [ "${ANSIBLE_DO_SUPPORT}" = true ]; then
     _ansible_do;
+  fi
+
+  if [ "${ANSIBLE_RAX_SUPPORT}" = true ]; then
+    _ansible_rax;
   fi
 
   _ansible_echo 'Ansible has been installed! Running ansible --version:';
