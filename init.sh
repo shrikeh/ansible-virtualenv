@@ -144,7 +144,7 @@ _ansible_hack() {
 }
 
 ansible_init_virtualenv() {
-  local ANSIBLE_DIR='./ansible';
+  local ANSIBLE_DIR='./.ansible';
   local ANSIBLE_REPO_URI='https://github.com/ansible/ansible.git';
   local ANSIBLE_BRANCH='devel';
   local ANSIBLE_VENV_DIR='venv';
