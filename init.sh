@@ -79,7 +79,7 @@ _ansible_init_virtualenv() {
       _ansible_echo "Directory ${ANSIBLE_VENV_DIR} does not exist or is not writable";
       return 1;
   fi
-  virtualenv "${ANSIBLE_VENV_DIR}" || return 1;
+  python -m virtualenv "${ANSIBLE_VENV_DIR}" || return 1;
   . "${ANSIBLE_VENV_DIR}/bin/activate";
   return 0;
 }
