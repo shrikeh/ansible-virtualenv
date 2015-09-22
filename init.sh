@@ -172,6 +172,10 @@ ansible_init_virtualenv() {
 
   _ansible_echo 'Beginning installation of ansible in a virtualenv...';
 
+  if [ -z "${PYTHON_PATH}" ]; then
+    _ansible_echo 'Environment variable PYTHON_PATH is empty or not set. This can cause problems';
+  fi
+
   while [[ "${#}" > 0 ]]; do
     local key="${1}";
     case ${key} in
