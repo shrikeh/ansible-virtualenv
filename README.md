@@ -38,4 +38,14 @@ See below for a full list of supported options.
 
 ## Flags
 
-`--d|--dir` Specify the directory that ansible will install into. Defaults to `./ansible` in the current directory.
+`-d|--dir` Specify the directory that ansible will install into. Defaults to `./ansible` in the current directory.
+
+`--venv` Specify the directory to install the virtualenv in.
+
+`-r|--repo` Specify the remote URL to use for ansible. Useful only if you are forking ansible.
+
+`-b|--branch` Specify the branch or tag you wish to check out. Defaults to 'devel'
+
+`-q|--quiet` Quiet mode. Suppress some verbosity.
+
+`--use-pip-version` Use the pip version of Ansible rather than the git repository

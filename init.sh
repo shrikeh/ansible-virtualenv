@@ -215,7 +215,7 @@ ansible_init_virtualenv() {
       --use-pip-version)
         ANSIBLE_USE_PIP_VERSION=true;
       ;;
-      --sudo)
+      --yolo)
         ANSIBLE_PIP_SUDO=true;
         _ansible_echo "Pip will run with sudo. This is a fantastically bad idea, IMHO. But, OK...";
       ;;
