@@ -2,7 +2,13 @@
 # Used merely to make the steps in the script easier to read.
 _ansible_echo() {
   echo -e "\033[1m\n${1}\n\033[0m";
-  tput sgr0;
+  \tput sgr0;
+  return 0;
+}
+
+function _ansible_realpath() {
+  local PATH_TO_NORMALIZE="${1}";
+  echo "$(python -c 'import os,sys; print os.path.realpath(sys.argv[1])' ${PATH_TO_NORMALIZE})";
   return 0;
 }
 
@@ -32,39 +38,26 @@ _ansible_check_pip() {
   return 1;
 }
 
-_ansible_update_pip() {
+_ansible_pip_install_packages() {
   local PIP_BINARY="${1}";
   local USE_SUDO="${2}";
+  local PIP_PACKAGES="${3}";
   local PIP_QUIET='--quiet';
-  if [ "${3}" = true ]; then
+
+  local PIP_UPGRADE='--upgrade';
+
+  if [ "${4:-false}" = true ]; then
+    PIP_UPGRADE='';
+  fi
+
+  if [ "${5:-false}" = true ]; then
     PIP_QUIET='';
   fi
   if [ "${USE_SUDO}" = true ]; then
     PIP_BINARY="sudo ${PIP_BINARY}";
   fi
-  # Make sure we have virtualenv
-  _ansible_echo 'Updating pip';
-  eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} pip" || return 1;
-}
 
-# Make sure we have the latest version of Virtualenv
-_ansible_get_virtualenv() {
-  local PIP_BINARY="${1}";
-  local USE_SUDO="${2}";
-
-  local PIP_QUIET='--quiet';
-  if [ "${3}" = true ]; then
-    PIP_QUIET='';
-  fi
-
-  if [ "${USE_SUDO}" = true ]; then
-    PIP_BINARY="sudo ${PIP_BINARY}";
-  fi
-  if ! _ansible_command_exists 'virtualenv'; then
-    _ansible_echo 'Installing virtualenv';
-    eval "${PIP_BINARY} install --user --upgrade ${PIP_QUIET} virtualenv" || return 1;
-  fi
-  return 0;
+  eval "${PIP_BINARY} install ${PIP_UPGRADE} ${PIP_QUIET} ${PIP_PACKAGES[*]}" || return 1;
 }
 
 _ansible_init_virtualenv() {
@@ -81,27 +74,6 @@ _ansible_init_virtualenv() {
   fi
   python -m virtualenv "${ANSIBLE_VENV_DIR}" || return 1;
   . "${ANSIBLE_VENV_DIR}/bin/activate";
-  return 0;
-}
-
-_ansible_init_dependencies() {
-  local ANSIBLE_DIR="${1}";
-  local PIP_QUIET='--quiet';
-  local REQUIREMENTS_FILE='./lib/ansible.egg-info/requires.txt';
-
-  if [ "${2}" = true ]; then
-    PIP_QUIET='';
-  fi
-
-  #local PIP_REQUIREMENTS="${ANSIBLE_DIR}/${REQUIREMENTS_FILE}";
-  #_ansible_echo "Attempting to install dependencies from ${PIP_REQUIREMENTS}";
-  #if [ ! -e "${PIP_REQUIREMENTS}" ]; then
-  #  _ansible_echo "File ${PIP_REQUIREMENTS} was not found or not readable";
-  #  return 1;
-  #else
-    _ansible_echo 'Installing dependencies';
-    pip install $PIP_QUIET --upgrade paramiko PyYAML Jinja2 httplib2 six || return 1;
-  #fi
   return 0;
 }
 
@@ -128,29 +100,8 @@ _ansible_fetch_repo() {
   return 0;
 }
 
-_ansible_do() {
-  local PIP_QUIET='--quiet';
-  if [ "${1}" = true ]; then
-    PIP_QUIET='';
-  fi
-  _ansible_echo 'Installing dopy';
-  pip install $PIP_QUIET --upgrade dopy || return 1;
-  return 0;
-}
-
-_ansible_rax() {
-  local PIP_QUIET='--quiet';
-  if [ "${1}" = true ]; then
-    PIP_QUIET='';
-  fi
-  _ansible_echo 'Installing pyrax';
-  pip install $PIP_QUIET --upgrade pyrax || return 1;
-  return 0;
-}
-
 _ansible_hack() {
   local ANSIBLE_DIR=${1};
-
   source "${ANSIBLE_DIR}/hacking/env-setup";
 }
 
@@ -166,11 +117,15 @@ ansible_init_virtualenv() {
   local ANSIBLE_UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
   local ANSIBLE_BREW_UP=false;
-  local ANSIBLE_DO_SUPPORT=false;
-  local ANSIBLE_RAX_SUPPORT=false;
-  local ANSIBLE_URI_SUPPORT=false;
+
+  local -a ANSIBLE_PIP_PACKAGES;
+  ANSIBLE_PIP_PACKAGES=('paramiko' 'PyYAML' 'Jinja2' 'six');
 
   _ansible_echo 'Beginning installation of ansible in a virtualenv...';
+
+  if [ -z "${PYTHON_PATH}" ]; then
+    _ansible_echo 'Environment variable PYTHON_PATH is empty or not set. This can cause problems';
+  fi
 
   while [[ "${#}" > 0 ]]; do
     local key="${1}";
@@ -188,14 +143,18 @@ ansible_init_virtualenv() {
       shift
       ;;
       --do)
-        ANSIBLE_DO_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('dopy');
       ;;
       --rax)
-        ANSIBLE_RAX_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('pyrax');
       ;;
-      --uri)
+      --uri-support)
       # Support for uri module, which requires httplib2
-        ANSIBLE_URI_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('httplib2');
+      ;;
+      --netaddr-support)
+      # Support for netaddr module, used for ipaddr filter
+        ANSIBLE_PIP_PACKAGES+=('netaddr');
       ;;
       --brew)
         ANSIBLE_BREW_UP=true;
@@ -209,9 +168,9 @@ ansible_init_virtualenv() {
         _ansible_echo 'Using quiet mode, shhhh';
       ;;
       --use-pip-version)
-        ANSIBLE_USE_PIP_VERSION=true;
+        ANSIBLE_PIP_PACKAGES+=('ansible');
       ;;
-      --sudo)
+      --yolo)
         ANSIBLE_PIP_SUDO=true;
         _ansible_echo "Pip will run with sudo. This is a fantastically bad idea, IMHO. But, OK...";
       ;;
@@ -223,7 +182,6 @@ ansible_init_virtualenv() {
         _ansible_echo 'Debug mode on';
       ;;
       --pip)
-        _ansible_echo "The --pip option currently does nothing. I'm working on it";
         if [ -z "${2}" ]; then
           _ansible_echo 'You specified --pip but it was empty';
           return 1;
@@ -238,6 +196,7 @@ ansible_init_virtualenv() {
     shift
   done
 
+  local ANSIBLE_VENV_DIR_REALPATH="$(_ansible_realpath ${ANSIBLE_VENV_DIR})";
 
   if [ "${ANSIBLE_DEBUG}" = true ]; then
     ANSIBLE_VERBOSE=true;
@@ -245,50 +204,41 @@ ansible_init_virtualenv() {
       _ansible_echo 'Debug: Deactivating existing virtualenv';
       deactivate;
     fi
-    _ansible_echo "Debug: Deleting existing directories ${ANSIBLE_DIR} and ${ANSIBLE_VENV_DIR}";
-    rm -rf "${ANSIBLE_DIR}" "${ANSIBLE_VENV_DIR}";
-  fi
-
-  if ! _ansible_check_pip "${ANSIBLE_PIP}" "${ANSIBLE_BREW_UP}"; then
-    _ansible_echo 'Failed to find pip, exiting';
-    return 1;
+    _ansible_echo "Debug: Deleting existing directories ${ANSIBLE_DIR} and ${ANSIBLE_VENV_DIR_REALPATH}";
+    rm -rf "${ANSIBLE_DIR}" "${ANSIBLE_VENV_DIR_REALPATH}";
   fi
 
   if [[ -z "${VIRTUAL_ENV}" ]]; then
-    if ! _ansible_update_pip "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_check_pip "${ANSIBLE_PIP}" "${ANSIBLE_BREW_UP}"; then
+      _ansible_echo 'Failed to find pip, exiting';
+      return 1;
+    fi
+
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'pip' "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to update pip';
       return 1;
     fi
 
-    if ! _ansible_get_virtualenv "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'virtualenv' "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to install virtualenv';
       return 1;
     fi;
 
-    if ! _ansible_init_virtualenv "${ANSIBLE_VENV_DIR}"; then
-      _ansible_echo "Failed to initialise virtualenv ${ANSIBLE_VENV_DIR}";
+    if ! _ansible_init_virtualenv "${ANSIBLE_VENV_DIR_REALPATH}"; then
+      _ansible_echo "Failed to initialise virtualenv ${ANSIBLE_VENV_DIR_REALPATH}";
       return 1;
     fi
   else
-    _ansible_echo "Virtualenv ${VIRTUAL_ENV} detected, making assumption to use this";
+    local ANSIBLE_EXISTING_VIRTUALENV_REALPATH="$(_ansible_realpath ${VIRTUAL_ENV})";
+
+    _ansible_echo "Virtualenv ${ANSIBLE_EXISTING_VIRTUALENV_REALPATH} detected, making assumption to use this";
   fi
 
+  _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "$ANSIBLE_PIP_PACKAGES" "${ANSIBLE_VERBOSE}";
 
-  if [ "${ANSIBLE_USE_PIP_VERSION}" = true ]; then
-    _ansible_echo 'Using ansible version from pip';
-    pip install --upgrade ansible;
-  else
+  if [ "${ANSIBLE_USE_PIP_VERSION}" = false ]; then
     _ansible_fetch_repo "${ANSIBLE_VERBOSE}" "${ANSIBLE_DIR}" "${ANSIBLE_REPO_URI}" "${ANSIBLE_BRANCH}";
     _ansible_hack "${ANSIBLE_DIR}";
-    _ansible_init_dependencies "${ANSIBLE_DIR}" "${ANSIBLE_VERBOSE}";
-  fi
-
-  if [ "${ANSIBLE_DO_SUPPORT}" = true ]; then
-    _ansible_do;
-  fi
-
-  if [ "${ANSIBLE_RAX_SUPPORT}" = true ]; then
-    _ansible_rax;
   fi
 
   _ansible_echo 'Ansible has been installed! Running ansible --version:';
