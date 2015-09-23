@@ -198,33 +198,24 @@ ansible_init_virtualenv() {
     shift
   done
 
-  local ANSIBLE_VENV_DIR_REALPATH="$(_ansible_realpath ${ANSIBLE_VENV_DIR})";
-
-  if [ "${ANSIBLE_DEBUG}" = true ]; then
-    ANSIBLE_VERBOSE=true;
-    if _ansible_command_exists 'deactivate'; then
-      _ansible_echo 'Debug: Deactivating existing virtualenv';
-      deactivate;
-    fi
-    _ansible_echo "Debug: Deleting existing directories ${ANSIBLE_DIR} and ${ANSIBLE_VENV_DIR_REALPATH}";
-    rm -rf "${ANSIBLE_DIR}" "${ANSIBLE_VENV_DIR_REALPATH}";
-  fi
-
   if [[ -z "${VIRTUAL_ENV}" ]]; then
     if ! _ansible_check_pip "${ANSIBLE_PIP}" "${ANSIBLE_BREW_UP}"; then
       _ansible_echo 'Failed to find pip, exiting';
       return 1;
     fi
 
-    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'pip' "${ANSIBLE_VERBOSE}" "${ANSIBLE_PIP_SUDO}"; then
+    _ansible_echo 'Ensuring pip is up to date';
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'pip' ${ANSIBLE_VERBOSE} ${ANSIBLE_PIP_SUDO}; then
       _ansible_echo 'Failed to update pip';
       return 1;
     fi
 
-    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'virtualenv' "${ANSIBLE_VERBOSE}" "${ANSIBLE_PIP_SUDO}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'virtualenv' ${ANSIBLE_VERBOSE} ${ANSIBLE_PIP_SUDO}; then
       _ansible_echo 'Failed to install virtualenv';
       return 1;
     fi;
+
+    local ANSIBLE_VENV_DIR_REALPATH="$(_ansible_realpath ${ANSIBLE_VENV_DIR})";
 
     if ! _ansible_init_virtualenv "${ANSIBLE_VENV_DIR_REALPATH}"; then
       _ansible_echo "Failed to initialise virtualenv ${ANSIBLE_VENV_DIR_REALPATH}";
