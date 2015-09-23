@@ -168,6 +168,7 @@ ansible_init_virtualenv() {
         _ansible_echo 'Using quiet mode, shhhh';
       ;;
       --use-pip-version)
+        ANSIBLE_USE_PIP_VERSION=true;
         ANSIBLE_PIP_PACKAGES+=('ansible');
       ;;
       --yolo)
