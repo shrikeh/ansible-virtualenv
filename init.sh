@@ -38,20 +38,26 @@ _ansible_check_pip() {
   return 1;
 }
 
-_ansible_pip_install() {
+_ansible_pip_install_packages() {
   local PIP_BINARY="${1}";
   local USE_SUDO="${2}";
   local PIP_PACKAGES="${3}";
   local PIP_QUIET='--quiet';
 
-  if [ "${4}" = true ]; then
+  local PIP_UPGRADE='--upgrade';
+
+  if [ "${4:-false}" = true ]; then
+    PIP_UPGRADE='';
+  fi
+
+  if [ "${5:-false}" = true ]; then
     PIP_QUIET='';
   fi
   if [ "${USE_SUDO}" = true ]; then
     PIP_BINARY="sudo ${PIP_BINARY}";
   fi
 
-  eval "${PIP_BINARY} install --upgrade ${PIP_QUIET} ${PIP_PACKAGES[*]}" || return 1;
+  eval "${PIP_BINARY} install ${PIP_UPGRADE} ${PIP_QUIET} ${PIP_PACKAGES[*]}" || return 1;
 }
 
 _ansible_init_virtualenv() {
@@ -111,10 +117,6 @@ ansible_init_virtualenv() {
   local ANSIBLE_UPDATE_PIP=false;
   local ANSIBLE_DEBUG=false;
   local ANSIBLE_BREW_UP=false;
-  local ANSIBLE_DO_SUPPORT=false;
-  local ANSIBLE_RAX_SUPPORT=false;
-  local ANSIBLE_URI_SUPPORT=false;
-  local ANSIBLE_NETADDR_SUPPORT=false;
 
   local -a ANSIBLE_PIP_PACKAGES;
   ANSIBLE_PIP_PACKAGES=('paramiko' 'PyYAML' 'Jinja2' 'six');
@@ -141,18 +143,18 @@ ansible_init_virtualenv() {
       shift
       ;;
       --do)
-        ANSIBLE_DO_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('dopy');
       ;;
       --rax)
-        ANSIBLE_RAX_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('pyrax');
       ;;
       --uri-support)
       # Support for uri module, which requires httplib2
-        ANSIBLE_URI_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('httplib2');
       ;;
       --netaddr-support)
       # Support for netaddr module, used for ipaddr filter
-        ANSIBLE_NETADDR_SUPPORT=true;
+        ANSIBLE_PIP_PACKAGES+=('netaddr');
       ;;
       --brew)
         ANSIBLE_BREW_UP=true;
@@ -166,7 +168,7 @@ ansible_init_virtualenv() {
         _ansible_echo 'Using quiet mode, shhhh';
       ;;
       --use-pip-version)
-        ANSIBLE_USE_PIP_VERSION=true;
+        ANSIBLE_PIP_PACKAGES+=('ansible');
       ;;
       --yolo)
         ANSIBLE_PIP_SUDO=true;
@@ -194,9 +196,7 @@ ansible_init_virtualenv() {
     shift
   done
 
-
   local ANSIBLE_VENV_DIR_REALPATH="$(_ansible_realpath ${ANSIBLE_VENV_DIR})";
-
 
   if [ "${ANSIBLE_DEBUG}" = true ]; then
     ANSIBLE_VERBOSE=true;
@@ -214,12 +214,12 @@ ansible_init_virtualenv() {
       return 1;
     fi
 
-    if ! _ansible_pip_install "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'pip' "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'pip' "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to update pip';
       return 1;
     fi
 
-    if ! _ansible_pip_install "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'virtualenv' "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'virtualenv' "${ANSIBLE_VERBOSE}"; then
       _ansible_echo 'Failed to install virtualenv';
       return 1;
     fi;
@@ -234,23 +234,8 @@ ansible_init_virtualenv() {
     _ansible_echo "Virtualenv ${ANSIBLE_EXISTING_VIRTUALENV_REALPATH} detected, making assumption to use this";
   fi
 
-  if [ "${ANSIBLE_USE_PIP_VERSION}" = true ]; then
-    ANSIBLE_PIP_PACKAGES+=('ansible');
-  fi
+  _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "$ANSIBLE_PIP_PACKAGES" "${ANSIBLE_VERBOSE}";
 
-  if [ "${ANSIBLE_URI_SUPPORT}" = true ]; then
-    ANSIBLE_PIP_PACKAGES+=('httplib2');
-  fi
-
-  if [ "${ANSIBLE_DO_SUPPORT}" = true ]; then
-    ANSIBLE_PIP_PACKAGES+=('dopy');
-  fi
-
-  if [ "${ANSIBLE_RAX_SUPPORT}" = true ]; then
-    ANSIBLE_PIP_PACKAGES+=('pyrax');
-  fi
-
-  _ansible_pip_install "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "$ANSIBLE_PIP_PACKAGES" "${ANSIBLE_VERBOSE}";
   if [ "${ANSIBLE_USE_PIP_VERSION}" = false ]; then
     _ansible_fetch_repo "${ANSIBLE_VERBOSE}" "${ANSIBLE_DIR}" "${ANSIBLE_REPO_URI}" "${ANSIBLE_BRANCH}";
     _ansible_hack "${ANSIBLE_DIR}";

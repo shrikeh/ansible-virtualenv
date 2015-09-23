@@ -4,7 +4,8 @@ Set up the latest version of Ansible to run from a virtualenv on your local syst
 
 ## Basic usage
 ```bash
-mkdir -p ./ansible-test;
+mkdir -p ./ansible-test
+cd ./ansible-test
 source <(curl -L --silent 'https://raw.githubusercontent.com/shrikeh/ansible-virtualenv/stable/init.sh')
 ```
 This will:
@@ -29,7 +30,7 @@ The bash script takes options, as in the example below:
 export ANSIBLE_TARGET_DIR=/path/to/ansible;
 export ANSIBLE_VENV_DIR=/path/to/venv;
 source <(curl -L --silent 'https://raw.githubusercontent.com/shrikeh/ansible-virtualenv/stable/init.sh') \
-  -dir   "${ANSIBLE_TARGET_DIR}" \
+  -dir "${ANSIBLE_TARGET_DIR}" \
   --venv "${ANSIBLE_VENV_DIR}" \
 ;
 
