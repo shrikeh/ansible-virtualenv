@@ -42,7 +42,7 @@ _ansible_pip_install_packages() {
   local PIP_BINARY="${1}";
   local PIP_PACKAGES="${2}";
   local PIP_VERBOSE="${3}";
-  local PIP_USE_SUDO="${4}";
+  local PIP_USE_SUDO="${4:-false}";
 
   local PIP_QUIET='--quiet';
   local PIP_UPGRADE='--upgrade';
@@ -234,9 +234,13 @@ ansible_init_virtualenv() {
     _ansible_hack "${ANSIBLE_DIR}";
   fi
 
-  _ansible_echo 'Ansible has been installed! Running ansible --version:';
-  ansible --version;
+  if _ansible_command_exists 'ansible'; then
+    _ansible_echo 'Ansible has been installed! Running ansible --version:';
+    ansible --version;
   return 0;
+  else
+    _ansible_echo 'ansible was installed but cannot be found on the path.'
+  fi
 }
 
 ansible_init_virtualenv "${@}";
