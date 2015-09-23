@@ -40,24 +40,25 @@ _ansible_check_pip() {
 
 _ansible_pip_install_packages() {
   local PIP_BINARY="${1}";
-  local USE_SUDO="${2}";
-  local PIP_PACKAGES="${3}";
-  local PIP_QUIET='--quiet';
+  local PIP_PACKAGES="${2}";
+  local PIP_VERBOSE="${3}";
+  local PIP_USE_SUDO="${4}";
 
+  local PIP_QUIET='--quiet';
   local PIP_UPGRADE='--upgrade';
 
-  if [ "${4:-false}" = true ]; then
-    PIP_UPGRADE='';
-  fi
-
-  if [ "${5:-false}" = true ]; then
+  if [ "${PIP_VERBOSE}" = true ]; then
     PIP_QUIET='';
   fi
-  if [ "${USE_SUDO}" = true ]; then
+  if [ "${PIP_USE_SUDO}" = true ]; then
     PIP_BINARY="sudo ${PIP_BINARY}";
   fi
 
-  eval "${PIP_BINARY} install ${PIP_UPGRADE} ${PIP_QUIET} ${PIP_PACKAGES[*]}" || return 1;
+  local PIP_STRING="${PIP_BINARY} install ${PIP_UPGRADE} ${PIP_QUIET} ${PIP_PACKAGES[*]}";
+
+  _ansible_echo "Running ${PIP_STRING}";
+
+  eval "${PIP_STRING}" || return 1;
 }
 
 _ansible_init_virtualenv() {
@@ -215,12 +216,12 @@ ansible_init_virtualenv() {
       return 1;
     fi
 
-    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'pip' "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'pip' "${ANSIBLE_VERBOSE}" "${ANSIBLE_PIP_SUDO}"; then
       _ansible_echo 'Failed to update pip';
       return 1;
     fi
 
-    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" 'virtualenv' "${ANSIBLE_VERBOSE}"; then
+    if ! _ansible_pip_install_packages "${ANSIBLE_PIP}" 'virtualenv' "${ANSIBLE_VERBOSE}" "${ANSIBLE_PIP_SUDO}"; then
       _ansible_echo 'Failed to install virtualenv';
       return 1;
     fi;
@@ -235,7 +236,7 @@ ansible_init_virtualenv() {
     _ansible_echo "Virtualenv ${ANSIBLE_EXISTING_VIRTUALENV_REALPATH} detected, making assumption to use this";
   fi
 
-  _ansible_pip_install_packages "${ANSIBLE_PIP}" "${ANSIBLE_PIP_SUDO}" "$ANSIBLE_PIP_PACKAGES" "${ANSIBLE_VERBOSE}";
+  _ansible_pip_install_packages "${ANSIBLE_PIP}" "$ANSIBLE_PIP_PACKAGES" "${ANSIBLE_VERBOSE}";
 
   if [ "${ANSIBLE_USE_PIP_VERSION}" = false ]; then
     _ansible_fetch_repo "${ANSIBLE_VERBOSE}" "${ANSIBLE_DIR}" "${ANSIBLE_REPO_URI}" "${ANSIBLE_BRANCH}";
